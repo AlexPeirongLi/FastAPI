@@ -1,20 +1,41 @@
-from fastapi import FastAPI, HTTPException
-app=FastAPI()
+import uvicorn
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List
 
-items = []
+class Fruit(BaseModel):
+    name: str
 
-@app.get("/")
-def root():
-    return{"Hello":"World"}
+class Fruits(BaseModel):
+    fruits: List[Fruit]
+    
+app = FastAPI(debug=True)
 
-@app.post("/items")
-def create_item(item:str):
-    items.append(item)
-    return items
+origins = [
+    "http://localhost:3000",
+    # Add more origins here
+]
 
-@app.get("/items/{item_id}")
-def get_item(item_id:int) -> str:
-    if item_id < len(items):
-        return items[item_id]
-    else:
-        raise HTTPException(status_code=404,detail="Item not Found")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+memory_db = {"fruits": []}
+
+@app.get("/fruits", response_model=Fruits)
+def get_fruits():
+    return Fruits(fruits=memory_db["fruits"])
+
+@app.post("/fruits")
+def add_fruit(fruit: Fruit):
+    memory_db["fruits"].append(fruit)
+    return fruit
+    
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
